@@ -28,6 +28,8 @@ module.exports = async function(context, req) {
   let parts = parse.Parse(bodyBuffer, boundary);
   let fileName = `${os.tmpdir}/${parts[0].filename}`;
   let data = parts[0].data;
+  // TODO: validate the file
+  // Expecting csv mime-types, maybe size limitation?
   try {
     await writeTmpFile(fileName, data);
     const config = {
@@ -36,14 +38,12 @@ module.exports = async function(context, req) {
       username: process.env['APP-SFTP-SERVER-USERNAME'],
       password: process.env['APP-SFTP-SERVER-PASSWORD']
     };
-    console.log(config);
     await sftp.connect(config);
     await sftp.put(`${fileName}`, `${process.env['APP-SFTP-SERVER-FOLDER']}/${parts[0].filename}`);
     context.res = {
       body: 'Success'
     };
   } catch (err) {
-    console.error(err);
     context.res = {
       body: {
         message: 'Error'
