@@ -4,6 +4,21 @@ const os = require('os');
 const Client = require('ssh2-sftp-client');
 let sftp = new Client();
 
+function writeTmpFile(fileName, data) {
+  return new Promise((resolve, reject) => {
+    let wStream = fs.createWriteStream(fileName);
+    wStream.write(data, async err => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve();
+      wStream.end();
+      wStream.destroy();
+    });
+  });
+}
+
 module.exports = async function(context, req) {
   context.log('JavaScript HTTP trigger function processed a request.');
   let bodyBuffer = Buffer.from(req.body);
@@ -13,47 +28,29 @@ module.exports = async function(context, req) {
   let parts = parse.Parse(bodyBuffer, boundary);
   let fileName = `${os.tmpdir}/${parts[0].filename}`;
   let data = parts[0].data;
-  let wStream = fs.createWriteStream(`${fileName}`);
-
-  wStream.write(data, err => {
-    if (err) {
-      console.error(err);
-      context.res = {
-        body: {
-          message: 'Error'
-        },
-        status: 500
-      };
-    }
-
-    sftp
-      .connect({
-        host: process.env['APP-SFTP-SERVER-URL'],
-        port: process.env['APP-SFTP-SERVER-PORT'],
-        username: process.env['APP-SFTP-SERVER-USERNAME'],
-        password: process.env['APP-SFTP-SERVER-PASSWORD']
-      })
-      .then(() => {
-        return sftp.put(
-          `${fileName}`,
-          `${process.env['APP-SFTP-SERVER-FOLDER']}/${parts[0].filename}`
-        );
-      })
-      .then(data => {
-        wStream.close();
-        wStream.destroy();
-        sftp.end();
-        fs.unlinkSync(`${fileName}`);
-        context.done();
-      })
-      .catch(err => {
-        context.res = {
-          body: {
-            message: 'Error'
-          },
-          status: 500
-        };
-        context.done();
-      });
-  });
+  try {
+    await writeTmpFile(fileName, data);
+    const config = {
+      host: process.env['APP-SFTP-SERVER-URL'],
+      port: process.env['APP-SFTP-SERVER-PORT'],
+      username: process.env['APP-SFTP-SERVER-USERNAME'],
+      password: process.env['APP-SFTP-SERVER-PASSWORD']
+    };
+    console.log(config);
+    await sftp.connect(config);
+    await sftp.put(`${fileName}`, `${process.env['APP-SFTP-SERVER-FOLDER']}/${parts[0].filename}`);
+    context.res = {
+      body: 'Success'
+    };
+  } catch (err) {
+    console.error(err);
+    context.res = {
+      body: {
+        message: 'Error'
+      },
+      status: 500
+    };
+    context.done();
+  }
+  fs.unlinkSync(fileName);
 };
