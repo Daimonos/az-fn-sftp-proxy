@@ -43,14 +43,18 @@ module.exports = async function(context, req) {
     context.res = {
       body: 'Success'
     };
+    sftp.end();
   } catch (err) {
+    console.error(err);
     context.res = {
       body: {
         message: 'Error'
       },
       status: 500
     };
+    sftp.end();
     context.done();
   }
+
   fs.unlinkSync(fileName);
 };
