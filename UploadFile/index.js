@@ -6,12 +6,14 @@ let sftp = new Client();
 
 function writeTmpFile(fileName, data) {
   return new Promise((resolve, reject) => {
+    console.log('writing temp file');
     let wStream = fs.createWriteStream(fileName);
     wStream.write(data, async err => {
       if (err) {
         reject(err);
         return;
       }
+      console.log('done writing tmp file: ' + fileName);
       resolve();
       wStream.end();
       wStream.destroy();
@@ -39,11 +41,12 @@ module.exports = async function(context, req) {
       password: process.env['APP-SFTP-SERVER-PASSWORD']
     };
     await sftp.connect(config);
-    await sftp.put(`${fileName}`, `${process.env['APP-SFTP-SERVER-FOLDER']}/${parts[0].filename}`);
+    await sftp.put(`${fileName}`, `${process.env['APP-SFTP-SERVER-FOLDER']}${parts[0].filename}`);
     context.res = {
       body: 'Success'
     };
     sftp.end();
+    context.done();
   } catch (err) {
     console.error(err);
     context.res = {

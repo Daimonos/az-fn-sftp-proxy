@@ -6,7 +6,10 @@
     "test": "echo \"No tests yet...\""
   },
   "dependencies": {
+    "memfs": "^2.16.1",
     "parse-multipart": "^1.0.4",
+    "sftp-promises": "^1.7.0",
+    "ssh2": "^0.8.5",
     "ssh2-sftp-client": "^4.2.2"
   },
   "devDependencies": {}
